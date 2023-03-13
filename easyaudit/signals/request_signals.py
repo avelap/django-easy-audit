@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
 from django.core.signals import request_started
@@ -14,6 +16,7 @@ from easyaudit.settings import REMOTE_ADDR_HEADER, UNREGISTERED_URLS, REGISTERED
 import re
 
 audit_logger = import_string(LOGGING_BACKEND)()
+LIMIT_TO = 1 * 1024 * 1024  # limit to 1Mb of post data in log
 
 
 def should_log_url(url):
@@ -63,10 +66,21 @@ def request_started_handler(sender, environ, **kwargs):
                 except:
                     user = None
 
-    request_event = audit_logger.request({
+    if environ.get("wsgi.input"):
+        data = environ.get("wsgi.input").read()
+        environ["wsgi.input"] = BytesIO(data)
+
+        data = str(data)
+        if len(data) > LIMIT_TO:
+            data = data[:LIMIT_TO] + ' ...'
+        # To not save passwords in plain in the database/log
+        if '&password=' in data and '&username=' in data:
+            data = 'Not saved for privacy protection'
+
+    audit_logger.request({
         'url': environ['PATH_INFO'],
         'method': environ['REQUEST_METHOD'],
-        'query_string': environ['QUERY_STRING'],
+        'query_string': f"{environ['QUERY_STRING']} POST DATA: {data}",
         'user_id': getattr(user, 'id', None),
         'remote_ip': environ[REMOTE_ADDR_HEADER],
         'datetime': timezone.now()
