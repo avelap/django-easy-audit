@@ -76,6 +76,8 @@ def request_started_handler(sender, environ, **kwargs):
         # To not save passwords in plain in the database/log
         if '&password' in data and '&username=' in data:
             data = 'Not saved for privacy protection'
+        if '&old_password=' in data and '&new_password1=' in data:
+            data = 'Not saved for privacy protection'
 
     audit_logger.request({
         'url': environ['PATH_INFO'],
