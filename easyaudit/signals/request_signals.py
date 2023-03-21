@@ -74,7 +74,7 @@ def request_started_handler(sender, environ, **kwargs):
         if len(data) > LIMIT_TO:
             data = data[:LIMIT_TO] + ' ...'
         # To not save passwords in plain in the database/log
-        if '&password=' in data and '&username=' in data:
+        if '&password' in data and '&username=' in data:
             data = 'Not saved for privacy protection'
 
     audit_logger.request({
